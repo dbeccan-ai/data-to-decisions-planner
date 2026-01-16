@@ -7,11 +7,12 @@ import { Step4ActionPlan } from "@/app/components/Step4ActionPlan";
 import { Step5Questions } from "@/app/components/Step5Questions";
 import { Step6FollowUp } from "@/app/components/Step6FollowUp";
 import { Button } from "@/app/components/ui/button";
-import { Printer, RotateCcw, Save } from "lucide-react";
+import { Printer, RotateCcw, Save, Database } from "lucide-react";
 import { toast, Toaster } from "sonner";
+import { supabase } from "@/supabaseClient";
 
 function PlannerContent() {
-  const { clearAllData } = usePlanner();
+  const { data, clearAllData } = usePlanner();
 
   const handlePrint = () => {
     window.print();
@@ -25,7 +26,37 @@ function PlannerContent() {
   };
 
   const handleSaveNotification = () => {
-    toast.success('Your progress is automatically saved!');
+    toast.success('Your progress is automatically saved to your browser');
+  };
+
+  // NEW: Save to Supabase database
+  const handleSaveToDatabase = async () => {
+    try {
+      const { error } = await supabase
+        .from('planner_submissions')
+        .insert([
+          {
+            parent_name: data.header.parentName,
+            student_name: data.header.studentName,
+            grade: data.header.grade,
+            date: data.header.date,
+            // Store all form data as JSON
+            form_data: JSON.stringify(data),
+            created_at: new Date().toISOString()
+          }
+        ]);
+
+      if (error) {
+        toast.error('Failed to save to database');
+        console.error('Error:', error);
+      } else {
+        toast.success('✅ Successfully saved to database!');
+        console.log('Data saved to Supabase');
+      }
+    } catch (err) {
+      toast.error('Error connecting to database');
+      console.error('Error:', err);
+    }
   };
 
   return (
@@ -43,6 +74,16 @@ function PlannerContent() {
             <Save className="mr-2 h-4 w-4" />
             Auto-Saved
           </Button>
+          
+          {/* NEW DATABASE SAVE BUTTON */}
+          <Button 
+            onClick={handleSaveToDatabase}
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            <Database className="mr-2 h-4 w-4" />
+            Save to Database
+          </Button>
+
           <Button 
             onClick={handleClearData}
             variant="outline"
